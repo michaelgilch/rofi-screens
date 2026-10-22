@@ -1,0 +1,28 @@
+# rofi-screens configuration. Copy to
+# ${XDG_CONFIG_HOME:-~/.config}/rofi-screens/config. It's sourced as bash and
+# every setting is optional.
+
+# ------------------------------------------------------------------- general
+
+# Extra flags passed to every rofi call. Split on whitespace; quotes inside
+# the value are not honored.
+#ROFI_ARGS="-theme gruvbox-dark"
+ROFI_ARGS=""
+
+# Command run (via bash -c) after any change, e.g. to resize a bar.
+#ON_CHANGE="polybar-launch"
+ON_CHANGE=""
+
+# ---------------------------------------------------------------- resolution
+
+# Output to manage. Defaults to the first connected eDP/LVDS/DSI panel, else
+# the primary output.
+#RES_OUTPUT="eDP-1"
+
+# Scaled modes to add, as percentages of the native mode's width. Each is
+# rounded to the nearest mode at exactly the native aspect ratio.
+#RES_SCALES=(90 80 67)
+
+# Exact modes to add instead of RES_SCALES. Use this to pick specific sizes,
+# or when the panel's ratio doesn't reduce cleanly (1366x768).
+#RES_MODES=(2016x1344 1800x1200)
