@@ -7,6 +7,9 @@
 # adds any missing ones each time it opens, and `rofi-screens --init` does it
 # up front (window manager startup, or an autorandr preswitch hook so a saved
 # profile can use them). `rofi-screens --xorg-conf` makes them permanent.
+#
+# The mode picked from the menu is saved, and `rofi-screens --init` restores
+# it, so it survives restarts. Opening the menu never restores.
 
 backend resolution res 10 "Resolution" video-display
 
@@ -15,6 +18,7 @@ backend resolution res 10 "Resolution" video-display
 RES_OUTPUT=${RES_OUTPUT:-}
 declare -p RES_SCALES &>/dev/null || RES_SCALES=(90 80 67)
 declare -p RES_MODES &>/dev/null || RES_MODES=()
+RES_REMEMBER=${RES_REMEMBER:-1}
 
 # res_load: sets res_output, res_native, res_current and res_have (every mode
 # the output has). Fails if there's no usable output.
@@ -89,8 +93,8 @@ res_xorg_conf() {
     printf 'EndSection\n'
 }
 
-# res_init: adds missing target modes to the output. Idempotent.
-res_init() {
+# res_add_modes: adds missing target modes to the output. Idempotent.
+res_add_modes() {
     res_load || return 1
     if ! command -v cvt >/dev/null; then
         notify "cvt not found" "Install libxcvt to add scaled modes" critical
@@ -111,6 +115,46 @@ res_init() {
     [[ -z $added ]] || res_load
 }
 
+res_state_file() {
+    echo "${XDG_STATE_HOME:-$HOME/.local/state}/rofi-screens/resolution"
+}
+
+# res_set <output> <mode>: switches the output to the mode and, if
+# RES_REMEMBER is on, saves it as "output<TAB>mode" for res_restore.
+res_set() {
+    xrandr --output "$1" --mode "$2" || return 1
+    ((RES_REMEMBER)) || return 0
+    local file
+    file=$(res_state_file)
+    mkdir -p "${file%/*}" && printf '%s\t%s\n' "$1" "$2" >"$file"
+}
+
+# res_restore: switches back to the saved mode. Skipped if it was saved for
+# another output (renamed, or RES_OUTPUT changed), the output no longer has
+# it, or it's already current.
+res_restore() {
+    ((RES_REMEMBER)) || return 0
+    local file output mode
+    file=$(res_state_file)
+    [[ -f $file ]] || return 0
+    IFS=$'\t' read -r output mode <"$file" || return 0
+    [[ $output == "$res_output" && $mode != "$res_current" ]] || return 0
+    [[ " ${res_have[*]} " == *" $mode "* ]] || return 0
+    if xrandr --output "$res_output" --mode "$mode"; then
+        on_change
+    else
+        notify "Failed to restore $mode" "" critical
+        return 1
+    fi
+}
+
+# res_init: for `rofi-screens --init`. Adds the modes, then restores the
+# saved one.
+res_init() {
+    res_add_modes # the saved mode may be one the driver offers anyway
+    res_restore
+}
+
 # res_choices: prints the menu's modes, largest first: everything the output
 # has at the native ratio, plus any RES_MODES that were added.
 res_choices() {
@@ -129,7 +173,7 @@ res_menu() {
         notify "Resolution" "No internal display found. Set RES_OUTPUT"
         exit 0
     fi
-    res_init # failures are reported; the driver's modes still work
+    res_add_modes # failures are reported; the driver's modes still work
 
     menu_reset
     while read -r mode; do
@@ -147,7 +191,7 @@ res_menu() {
     "$res_current") exit 0 ;;
     *)
         run_bg "$res_output now at $key" "Failed to set $key" \
-            xrandr --output "$res_output" --mode "$key"
+            res_set "$res_output" "$key"
         ;;
     esac
 }

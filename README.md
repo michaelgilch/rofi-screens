@@ -83,7 +83,9 @@ silently ignores the section; rerun the command if you change the config or
 the output.
 
 **At session start.** Without root, run `rofi-screens --init`, which adds
-the modes without showing a menu, from your window manager's startup:
+the modes without showing a menu (and restores the saved mode, see
+[Remembering the resolution](#remembering-the-resolution)), from your window
+manager's startup:
 
 ```
 # i3
@@ -97,6 +99,23 @@ mkdir -p ~/.config/autorandr
 printf '#!/bin/sh\nrofi-screens --init\n' > ~/.config/autorandr/preswitch
 chmod +x ~/.config/autorandr/preswitch
 ```
+
+### Remembering the resolution
+
+The mode you pick from the menu is saved to
+`${XDG_STATE_HOME:-~/.local/state}/rofi-screens/resolution`, and
+`rofi-screens --init` switches back to it, then runs `ON_CHANGE`. With the
+i3 `exec` line above, the resolution survives logouts and reboots.
+
+It's restored only if it was saved for the output being managed, the output
+still has the mode, and it isn't already current. Opening the menu never
+restores, so a mode set some other way isn't reverted. Set `RES_REMEMBER=0`
+to turn this off.
+
+Anything else that sets the panel's mode at login (an LXRandR or arandr
+autostart entry, a desktop's display settings) races with `--init`, so remove
+it. From an autorandr preswitch hook, autorandr applies its profile after
+`--init` runs, so the profile wins.
 
 ## Configuration
 
@@ -116,6 +135,7 @@ The file is sourced as bash from `${XDG_CONFIG_HOME:-~/.config}/rofi-screens/con
 | `RES_OUTPUT` | first connected eDP/LVDS/DSI, else primary | Output the resolution menu manages |
 | `RES_SCALES` | `(90 80 67)` | Modes to add, as percentages of the native width, rounded to the nearest mode at exactly the native ratio |
 | `RES_MODES` | `()` | Exact modes to add instead of `RES_SCALES` |
+| `RES_REMEMBER` | `1` | Save the mode picked from the menu and restore it on `--init`. `0` turns it off |
 
 Panels whose ratio doesn't reduce cleanly (1366x768 is 683:384) have no
 useful exact-ratio modes, so `RES_SCALES` produces nothing there. Use

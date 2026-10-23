@@ -26,3 +26,8 @@ ON_CHANGE=""
 # Exact modes to add instead of RES_SCALES. Use this to pick specific sizes,
 # or when the panel's ratio doesn't reduce cleanly (1366x768).
 #RES_MODES=(2016x1344 1800x1200)
+
+# Save the mode picked from the menu and restore it on `rofi-screens --init`.
+# Set to 0 to do neither. The mode is saved to
+# ${XDG_STATE_HOME:-~/.local/state}/rofi-screens/resolution.
+#RES_REMEMBER=1
